@@ -1,44 +1,51 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../providers/accounts_provider.dart';
 import '../theme/app_theme.dart';
 
-class QuickLogSheet extends StatefulWidget {
-  const QuickLogSheet({super.key});
+class QuickLogScreen extends ConsumerStatefulWidget {
+  const QuickLogScreen({super.key});
 
   static Future<void> show(BuildContext context) {
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => const QuickLogSheet(),
+      builder: (_) => const QuickLogScreen(),
     );
   }
 
   @override
-  State<QuickLogSheet> createState() => _QuickLogSheetState();
+  ConsumerState<QuickLogScreen> createState() => _QuickLogScreenState();
 }
 
-class _QuickLogSheetState extends State<QuickLogSheet> {
+class _QuickLogScreenState extends ConsumerState<QuickLogScreen> {
   String _amount = '0';
   int _selectedSource = 0;
   int? _selectedCategory;
+  final _noteCtrl = TextEditingController();
 
-  static const _sources = ['Wallet', 'Checking', 'Savings'];
   static const _categories = [
     (Icons.restaurant_outlined, 'Food'),
     (Icons.directions_car_outlined, 'Transport'),
     (Icons.shopping_bag_outlined, 'Shopping'),
     (Icons.receipt_long_outlined, 'Bills'),
+    (Icons.more_horiz_rounded, 'Other'),
   ];
+
+  @override
+  void dispose() {
+    _noteCtrl.dispose();
+    super.dispose();
+  }
 
   void _onKey(String key) {
     setState(() {
       if (key == 'del') {
-        if (_amount.length > 1) {
-          _amount = _amount.substring(0, _amount.length - 1);
-        } else {
-          _amount = '0';
-        }
+        _amount = _amount.length > 1
+            ? _amount.substring(0, _amount.length - 1)
+            : '0';
       } else if (key == '.') {
         if (!_amount.contains('.')) _amount = '$_amount.';
       } else {
@@ -47,148 +54,194 @@ class _QuickLogSheetState extends State<QuickLogSheet> {
     });
   }
 
-  String get _displayAmount {
+  void _logTransaction() {
     final value = double.tryParse(_amount) ?? 0;
-    return AppTheme.formatAmount(value);
+    debugPrint('Quick-Log: EGP $value');
+    final messenger = ScaffoldMessenger.of(context);
+    Navigator.pop(context);
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          'Transaction logged!',
+          style: AppTheme.bodyMd.copyWith(color: AppTheme.background),
+        ),
+        backgroundColor: AppTheme.cyan,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(top: 40),
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceContainer,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.modal)),
+    final accounts = ref.watch(accountsProvider);
+    final displayAmount =
+        AppTheme.formatCurrency(double.tryParse(_amount) ?? 0);
+
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.viewInsetsOf(context).bottom,
       ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.screenMargin),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.outlineVariant,
-                    borderRadius: BorderRadius.circular(AppRadius.pill),
+      child: Container(
+        margin: const EdgeInsets.only(top: 40),
+        decoration: const BoxDecoration(
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(AppTheme.radiusModal),
+          ),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(AppTheme.screenMargin),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppTheme.outlineVariant,
+                      borderRadius:
+                          BorderRadius.circular(AppTheme.radiusPill),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.unit * 2.5),
-              Text('QUICK ENTRY', style: AppTheme.labelLg, textAlign: TextAlign.center),
-              const SizedBox(height: AppSpacing.unit * 2),
-              Text(_displayAmount, style: AppTheme.amountQuickLog, textAlign: TextAlign.center),
-              const SizedBox(height: AppSpacing.unit * 2.5),
-              _Numpad(onKey: _onKey),
-              const SizedBox(height: AppSpacing.unit * 3),
-              Text('SOURCE ACCOUNT', style: AppTheme.labelLg),
-              const SizedBox(height: AppSpacing.unit * 1.5),
-              SizedBox(
-                height: 40,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _sources.length,
-                  separatorBuilder: (_, _) => const SizedBox(width: 8),
-                  itemBuilder: (context, index) {
-                    final selected = _selectedSource == index;
+                const SizedBox(height: 20),
+                Text('QUICK ENTRY',
+                    style: AppTheme.labelCyan, textAlign: TextAlign.center),
+                const SizedBox(height: 16),
+                Text(displayAmount,
+                    style: AppTheme.amountQuickLog,
+                    textAlign: TextAlign.center),
+                const SizedBox(height: 20),
+                _Numpad(onKey: _onKey),
+                const SizedBox(height: 24),
+                Text('SOURCE ACCOUNT', style: AppTheme.labelCyan),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 40,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: accounts.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 8),
+                    itemBuilder: (context, index) {
+                      final selected = _selectedSource == index;
+                      final account = accounts[index];
+                      return GestureDetector(
+                        onTap: () => setState(() => _selectedSource = index),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? AppTheme.cyan.withValues(alpha: 0.15)
+                                : AppTheme.surfaceHigh,
+                            borderRadius:
+                                BorderRadius.circular(AppTheme.radiusPill),
+                            border: Border.all(
+                              color: selected
+                                  ? AppTheme.cyan
+                                  : AppTheme.outlineVariant,
+                            ),
+                          ),
+                          child: Text(
+                            account.name.split(' ').first,
+                            style: AppTheme.bodyMd.copyWith(
+                              color: selected
+                                  ? AppTheme.cyan
+                                  : AppTheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: List.generate(_categories.length, (index) {
+                    final (icon, label) = _categories[index];
+                    final selected = _selectedCategory == index;
                     return GestureDetector(
-                      onTap: () => setState(() => _selectedSource = index),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: selected
-                              ? AppColors.primary.withValues(alpha: 0.15)
-                              : AppColors.surfaceContainerHigh,
-                          borderRadius: BorderRadius.circular(AppRadius.pill),
-                          border: Border.all(
-                            color: selected
-                                ? AppColors.primary
-                                : AppColors.outlineVariant,
+                      onTap: () => setState(() => _selectedCategory = index),
+                      child: Column(
+                        children: [
+                          Container(
+                            width: 52,
+                            height: 52,
+                            decoration: AppTheme.squircle(
+                              color: selected
+                                  ? AppTheme.cyan.withValues(alpha: 0.15)
+                                  : AppTheme.surfaceHigh,
+                            ),
+                            child: Icon(
+                              icon,
+                              color: selected
+                                  ? AppTheme.cyan
+                                  : AppTheme.onSurfaceVariant,
+                            ),
                           ),
-                        ),
-                        child: Text(
-                          _sources[index],
-                          style: AppTheme.bodyMd.copyWith(
-                            color: selected
-                                ? AppColors.primary
-                                : AppColors.onSurfaceVariant,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                          const SizedBox(height: 6),
+                          Text(label,
+                              style: AppTheme.bodySm.copyWith(fontSize: 11)),
+                        ],
                       ),
                     );
-                  },
+                  }),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.unit * 3),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: List.generate(_categories.length, (index) {
-                  final (icon, label) = _categories[index];
-                  final selected = _selectedCategory == index;
-                  return GestureDetector(
-                    onTap: () => setState(() => _selectedCategory = index),
-                    child: Column(
-                      children: [
-                        Container(
-                          width: 52,
-                          height: 52,
-                          decoration: AppTheme.squircle(
-                            color: selected
-                                ? AppColors.primary.withValues(alpha: 0.15)
-                                : AppColors.surfaceContainerHigh,
-                          ),
-                          child: Icon(
-                            icon,
-                            color: selected
-                                ? AppColors.primary
-                                : AppColors.onSurfaceVariant,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(label, style: AppTheme.bodySm.copyWith(fontSize: 11)),
-                      ],
+                const SizedBox(height: 24),
+                TextField(
+                  controller: _noteCtrl,
+                  style: AppTheme.bodyMd,
+                  decoration: InputDecoration(
+                    hintText: 'Add a note...',
+                    hintStyle: AppTheme.bodySm,
+                    filled: true,
+                    fillColor: AppTheme.surfaceHigh,
+                    border: OutlineInputBorder(
+                      borderRadius:
+                          BorderRadius.circular(AppTheme.radiusButton),
+                      borderSide:
+                          const BorderSide(color: AppTheme.outlineVariant),
                     ),
-                  );
-                }),
-              ),
-              const SizedBox(height: AppSpacing.unit * 3),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceContainerHigh,
-                  borderRadius: BorderRadius.circular(AppRadius.button),
-                  border: Border.all(color: AppColors.outlineVariant),
-                ),
-                child: Text(
-                  'Add a note...',
-                  style: AppTheme.bodyMd.copyWith(color: AppColors.outline),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.unit * 2.5),
-              SizedBox(
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: AppColors.onPrimaryDark,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.button),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius:
+                          BorderRadius.circular(AppTheme.radiusButton),
+                      borderSide:
+                          const BorderSide(color: AppTheme.outlineVariant),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 14,
                     ),
                   ),
-                  child: Text(
-                    'Log Transaction',
-                    style: AppTheme.titleMd.copyWith(color: AppColors.onPrimaryDark),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: _logTransaction,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.cyan,
+                      foregroundColor: AppTheme.background,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(AppTheme.radiusButton),
+                      ),
+                    ),
+                    child: Text(
+                      'Log Transaction',
+                      style: AppTheme.titleMd.copyWith(
+                        color: AppTheme.background,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -225,16 +278,14 @@ class _Numpad extends StatelessWidget {
                       height: 52,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: AppColors.surfaceContainerHigh,
-                        borderRadius: BorderRadius.circular(AppRadius.button),
+                        color: AppTheme.surfaceHigh,
+                        borderRadius:
+                            BorderRadius.circular(AppTheme.radiusButton),
                       ),
                       child: key == 'del'
-                          ? const Icon(
-                              Icons.backspace_outlined,
-                              color: AppColors.onSurfaceVariant,
-                              size: 20,
-                            )
-                          : Text(key, style: AppTheme.amountMd),
+                          ? const Icon(Icons.backspace_outlined,
+                              color: AppTheme.onSurfaceVariant, size: 20)
+                          : Text(key, style: AppTheme.amountLg.copyWith(fontSize: 22)),
                     ),
                   ),
                 ),

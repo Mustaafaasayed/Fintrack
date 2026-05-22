@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/accounts_provider.dart';
+import '../providers/credit_card_provider.dart';
+import '../providers/transactions_provider.dart';
 import '../theme/app_theme.dart';
 
 class NetPositionCard extends ConsumerWidget {
@@ -10,52 +12,49 @@ class NetPositionCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final netPosition = ref.watch(netPositionProvider);
-    final stats = ref.watch(dashboardStatsProvider);
+    final income = ref.watch(monthlyIncomeProvider);
+    final spent = ref.watch(monthlySpentProvider);
+    final credit = ref.watch(creditCardProvider);
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(AppSpacing.cardPadding),
+      padding: const EdgeInsets.all(AppTheme.cardPadding),
       decoration: BoxDecoration(
-        color: AppColors.surfaceContainer,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: AppColors.outlineVariant),
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+        border: Border.all(color: AppTheme.outlineVariant),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text('NET POSITION', style: AppTheme.labelCyan),
+          const SizedBox(height: 8),
           Text(
-            'NET POSITION',
-            style: AppTheme.labelLg.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.unit),
-          Text(
-            AppTheme.formatAmount(netPosition),
+            AppTheme.formatCurrency(netPosition),
             style: AppTheme.amountHero,
           ),
-          const SizedBox(height: AppSpacing.unit * 2.5),
+          const SizedBox(height: 20),
           Row(
             children: [
-              _StatChip(
-                label: 'Income',
-                value: AppTheme.formatAmount(stats.income, showSign: true),
+              _Stat(
+                label: 'Total Income',
+                value: AppTheme.formatCurrency(income, showSign: true),
                 icon: Icons.arrow_upward_rounded,
-                color: AppColors.secondary,
+                color: AppTheme.mint,
               ),
-              const SizedBox(width: AppSpacing.unit * 2),
-              _StatChip(
-                label: 'Spent',
-                value: AppTheme.formatAmount(-stats.spent),
+              const SizedBox(width: 16),
+              _Stat(
+                label: 'Total Spent',
+                value: AppTheme.formatCurrency(-spent),
                 icon: Icons.arrow_downward_rounded,
-                color: AppColors.errorDue,
+                color: AppTheme.errorRed,
               ),
-              const SizedBox(width: AppSpacing.unit * 2),
-              _StatChip(
+              const SizedBox(width: 16),
+              _Stat(
                 label: 'Credit Due',
-                value: AppTheme.formatAmount(stats.creditDue),
+                value: AppTheme.formatCurrency(credit.dueAmount),
                 icon: Icons.warning_amber_rounded,
-                color: AppColors.errorDue,
+                color: AppTheme.errorRed,
               ),
             ],
           ),
@@ -65,8 +64,8 @@ class NetPositionCard extends ConsumerWidget {
   }
 }
 
-class _StatChip extends StatelessWidget {
-  const _StatChip({
+class _Stat extends StatelessWidget {
+  const _Stat({
     required this.label,
     required this.value,
     required this.icon,
@@ -88,7 +87,13 @@ class _StatChip extends StatelessWidget {
             children: [
               Icon(icon, size: 12, color: color),
               const SizedBox(width: 4),
-              Text(label, style: AppTheme.labelMd),
+              Flexible(
+                child: Text(
+                  label,
+                  style: AppTheme.bodySm.copyWith(fontSize: 10),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 4),
@@ -97,7 +102,7 @@ class _StatChip extends StatelessWidget {
             style: AppTheme.bodySm.copyWith(
               color: color,
               fontWeight: FontWeight.w600,
-              fontSize: 12,
+              fontSize: 11,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

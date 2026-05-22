@@ -5,7 +5,7 @@ import '../providers/accounts_provider.dart';
 import '../providers/transactions_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/account_tile.dart';
-import '../widgets/app_bar.dart';
+import '../widgets/fintrack_app_bar.dart';
 import '../widgets/net_position_card.dart';
 import '../widgets/transaction_tile.dart';
 
@@ -23,81 +23,73 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final accounts = ref.watch(accountsProvider);
     final transactions = ref.watch(transactionsProvider);
+    final recent = transactions.take(4).toList();
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.only(bottom: AppSpacing.unit * 3),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const FintrackAppBar(),
+          const FintrackAppBar(showAvatar: true),
           Padding(
             padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.screenMargin,
+              horizontal: AppTheme.screenMargin,
             ),
             child: Text(
               '${_greeting()}, Ahmed 👋',
               style: AppTheme.headlineLg,
             ),
           ),
-          const SizedBox(height: AppSpacing.unit * 2.5),
+          const SizedBox(height: 20),
           const Padding(
-            padding: EdgeInsets.symmetric(horizontal: AppSpacing.screenMargin),
+            padding: EdgeInsets.symmetric(horizontal: AppTheme.screenMargin),
             child: NetPositionCard(),
           ),
-          const SizedBox(height: AppSpacing.unit * 3),
+          const SizedBox(height: 24),
           Padding(
             padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.screenMargin,
+              horizontal: AppTheme.screenMargin,
             ),
-            child: Text(
-              'LEDGER NODES',
-              style: AppTheme.labelLg,
-            ),
+            child: Text('LEDGER NODES', style: AppTheme.labelCyan),
           ),
-          const SizedBox(height: AppSpacing.unit * 1.5),
+          const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.screenMargin,
+              horizontal: AppTheme.screenMargin,
             ),
             child: Column(
-              children: accounts
-                  .map((a) => AccountTile(account: a))
-                  .toList(),
+              children: accounts.map((a) => AccountTile(account: a)).toList(),
             ),
           ),
-          const SizedBox(height: AppSpacing.unit * 2),
+          const SizedBox(height: 16),
           Padding(
             padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.screenMargin,
+              horizontal: AppTheme.screenMargin,
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'RECENT TRANSACTIONS',
-                  style: AppTheme.labelLg,
-                ),
+                Text('RECENT TRANSACTIONS', style: AppTheme.labelCyan),
                 Text(
                   'View All',
                   style: AppTheme.bodySm.copyWith(
-                    color: AppColors.primary,
+                    color: AppTheme.cyan,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: AppSpacing.unit * 1.5),
+          const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.screenMargin,
+              horizontal: AppTheme.screenMargin,
             ),
             child: Column(
-              children: transactions
-                  .map((t) => TransactionTile(transaction: t))
-                  .toList(),
+              children:
+                  recent.map((t) => TransactionTile(transaction: t)).toList(),
             ),
           ),
+          const SizedBox(height: 24),
         ],
       ),
     );
